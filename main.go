@@ -55,10 +55,6 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	err = ioutil.WriteFile(handler.Filename, data, 0777)
-	if err != nil {
-		fmt.Println(err)
-	}
 
 	content_type := handler.Header.Get("Content-Type")
 
