@@ -1,6 +1,7 @@
 package main
 
 import (
+	// "bitbucket.org/taruti/mimemagic"
 	"crypto/md5"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	// "os"
 	"strings"
 )
 
@@ -23,7 +25,9 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 	// bucket := vars["bucket"]
 	object := vars["object"]
 
-	val, err := store.Read(md5sum(object))
+	md5 := md5sum(object)
+
+	val, err := store.Read(md5)
 
 	if err != nil {
 		// fmt.Printf("%s", err)
@@ -32,6 +36,22 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "404 Not Found")
 		return
 	}
+
+	// Determine content-type manually
+
+	// b := make([]byte, 1024)
+	// file, err := os.Open("store/" + strings.Join(BlockTransform(md5), "/") +
+	// 	"/" +
+	// 	md5)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// file.Read(b)
+	// defer file.Close()
+
+	// content_type := mimemagic.Match("", b)
+
+	// w.Header().Set("Content-Type", content_type)
 
 	fmt.Fprintf(w, "%s", val)
 }
