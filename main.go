@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	// "os"
+	"code.google.com/p/gcfg"
 	"strings"
 )
 
@@ -36,6 +37,8 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "404 Not Found")
 		return
 	}
+
+	fmt.Printf("GET: %s\n", ActualPaths(object))
 
 	// Determine content-type manually
 
@@ -81,9 +84,7 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 	md5 := md5sum(object)
 
 	fmt.Printf("Uploaded: %s to %s with Content-Type: %s\n", handler.Filename,
-		strings.Join(BlockTransform(md5), "/")+
-			"/"+
-			md5,
+		ActualPaths(object),
 		content_type)
 
 	store.Write(md5, []byte(data))
@@ -100,13 +101,17 @@ func DeleteObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	md5 := md5sum(object)
 
-	fmt.Printf("Deleted: %s at %s\n", object,
-		strings.Join(BlockTransform(md5), "/")+
-			"/"+
-			md5)
+	fmt.Printf("Deleted: %s at %s\n", object, ActualPaths(object))
 
 	// Erase the key+value from the store (and the disk).
 	store.Erase(md5)
+}
+
+func ActualPaths(s string) string {
+	md5 := md5sum(s)
+	return strings.Join(BlockTransform(md5), "/") +
+		"/" +
+		md5
 }
 
 // transform methods
@@ -133,21 +138,38 @@ func md5sum(s string) string {
 
 // end transform methods
 
+type Config struct {
+	Server struct {
+		Port  string
+		Host  string
+		Store string
+	}
+}
+
 func main() {
+
+	var cfg Config
+	err := gcfg.ReadFileInto(&cfg, "config")
+	if err != nil {
+		panic(err)
+	}
 
 	// Initialize a new diskv store, rooted at "store", with a 1MB cache.
 	store = diskv.New(diskv.Options{
-		BasePath:     "store",
+		BasePath:     cfg.Server.Store,
 		Transform:    BlockTransform,
 		CacheSizeMax: 1024 * 1024,
 	})
 
 	r := mux.NewRouter()
+
+	// r.Host("www.mini-s3.com")
+
 	r.HandleFunc("/{bucket}", BucketHandler)
 	r.HandleFunc(`/{bucket}/{object:[a-zA-Z_/\.]+}`, GETObjectHandler).Methods("GET")
 	r.HandleFunc(`/{bucket}/{object:[a-zA-Z_/\.]+}`, POSTObjectHandler).Methods("POST")
 	r.HandleFunc(`/{bucket}/{object:[a-zA-Z_/\.]+}`, DeleteObjectHandler).Methods("DELETE")
 	http.Handle("/", r)
 
-	http.ListenAndServe(":8080", r)
+	http.ListenAndServe(cfg.Server.Host+":"+cfg.Server.Port, r)
 }
