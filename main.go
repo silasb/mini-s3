@@ -147,11 +147,18 @@ type Config struct {
 }
 
 func main() {
+	fmt.Println("mini-s3 v0.0.1")
 
 	var cfg Config
+
+	// setting default settings
+	cfg.Server.Host = "localhost"
+	cfg.Server.Port = "8080"
+	cfg.Server.Store = "store"
+
 	err := gcfg.ReadFileInto(&cfg, "config")
 	if err != nil {
-		panic(err)
+		fmt.Println("Not using config file for settings, using defaults.")
 	}
 
 	// Initialize a new diskv store, rooted at "store", with a 1MB cache.
