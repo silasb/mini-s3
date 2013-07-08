@@ -78,20 +78,25 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "POST %s!\n", r.URL.Path[1:])
-	fmt.Fprintf(w, "bucket: %s\n", bucket)
-	fmt.Fprintf(w, "object: %s\n", object)
-
 	file, handler, err := r.FormFile("file")
 	if err != nil {
 		fmt.Println(err)
+		w.WriteHeader(http.StatusNotAcceptable)
+		fmt.Fprint(w, "406 Form field \"file\" not present\n")
+		return
 	}
 	defer file.Close()
 
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
 		fmt.Println(err)
+		w.WriteHeader(http.StatusNotAcceptable)
+		fmt.Fprintf(w, "406 %s", err)
+		return
 	}
+
+	fmt.Fprintf(w, "bucket: %s\n", bucket)
+	fmt.Fprintf(w, "object: %s\n", object)
 
 	content_type := handler.Header.Get("Content-Type")
 
@@ -116,7 +121,6 @@ func DeleteObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "DELETE %s!\n", r.URL.Path[1:])
 	fmt.Fprintf(w, "bucket: %s\n", bucket)
 	fmt.Fprintf(w, "object: %s\n", object)
 
