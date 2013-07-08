@@ -23,10 +23,18 @@ func BucketHandler(w http.ResponseWriter, r *http.Request) {
 
 func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	// bucket := vars["bucket"]
 	object := vars["object"]
+	bucket := vars["subdomain"]
 
-	md5 := md5sum(object)
+	if bucket == "" {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "404 No Bucket Provided")
+		return
+	}
+
+	path := bucket + "/" + object
+
+	md5 := md5sum(path)
 
 	val, err := store.Read(md5)
 
@@ -38,7 +46,7 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("GET: %s\n", ActualPaths(object))
+	fmt.Printf("GET: %s\n", ActualPaths(path))
 
 	// Determine content-type manually
 
@@ -61,8 +69,14 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := vars["subdomain"]
 	object := vars["object"]
+
+	if bucket == "" {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "404 No Bucket Provided")
+		return
+	}
 
 	fmt.Fprintf(w, "POST %s!\n", r.URL.Path[1:])
 	fmt.Fprintf(w, "bucket: %s\n", bucket)
@@ -81,27 +95,35 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	content_type := handler.Header.Get("Content-Type")
 
-	md5 := md5sum(object)
+	path := bucket + "/" + object
+	md5 := md5sum(path)
 
 	fmt.Printf("Uploaded: %s to %s with Content-Type: %s\n", handler.Filename,
-		ActualPaths(object),
-		content_type)
+	ActualPaths(path),
+	content_type)
 
 	store.Write(md5, []byte(data))
 }
 
 func DeleteObjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	bucket := vars["bucket"]
+	bucket := vars["subdomain"]
 	object := vars["object"]
+
+	if bucket == "" {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "404 No Bucket Provided")
+		return
+	}
 
 	fmt.Fprintf(w, "DELETE %s!\n", r.URL.Path[1:])
 	fmt.Fprintf(w, "bucket: %s\n", bucket)
 	fmt.Fprintf(w, "object: %s\n", object)
 
-	md5 := md5sum(object)
+	path := bucket + "/" + object
+	md5 := md5sum(path)
 
-	fmt.Printf("Deleted: %s at %s\n", object, ActualPaths(object))
+	fmt.Printf("Deleted: %s at %s\n", object, ActualPaths(path))
 
 	// Erase the key+value from the store (and the disk).
 	store.Erase(md5)
@@ -140,8 +162,9 @@ func md5sum(s string) string {
 
 type Config struct {
 	Server struct {
-		Port  string
 		Host  string
+		Port  string
+		DomainName string
 		Store string
 	}
 }
@@ -152,8 +175,9 @@ func main() {
 	var cfg Config
 
 	// setting default settings
-	cfg.Server.Host = "localhost"
+	cfg.Server.Host = "127.0.0.1"
 	cfg.Server.Port = "8080"
+	cfg.Server.DomainName = "s3.dev"
 	cfg.Server.Store = "store"
 
 	err := gcfg.ReadFileInto(&cfg, "config")
@@ -170,13 +194,12 @@ func main() {
 
 	r := mux.NewRouter()
 
-	// r.Host("www.mini-s3.com")
+	s := r.Host(`{subdomain}.` + cfg.Server.DomainName).Subrouter()
+	s.HandleFunc("/", BucketHandler)
+	s.HandleFunc(`/{object:[a-zA-Z_/\.]+}`, GETObjectHandler).Methods("GET")
+	s.HandleFunc(`/{object:[a-zA-Z_/\.]+}`, POSTObjectHandler).Methods("POST")
+	s.HandleFunc(`/{object:[a-zA-Z_/\.]+}`, DeleteObjectHandler).Methods("DELETE")
+	http.Handle("/", s)
 
-	r.HandleFunc("/{bucket}", BucketHandler)
-	r.HandleFunc(`/{bucket}/{object:[a-zA-Z_/\.]+}`, GETObjectHandler).Methods("GET")
-	r.HandleFunc(`/{bucket}/{object:[a-zA-Z_/\.]+}`, POSTObjectHandler).Methods("POST")
-	r.HandleFunc(`/{bucket}/{object:[a-zA-Z_/\.]+}`, DeleteObjectHandler).Methods("DELETE")
-	http.Handle("/", r)
-
-	http.ListenAndServe(cfg.Server.Host+":"+cfg.Server.Port, r)
+	http.ListenAndServe(cfg.Server.Host+":"+cfg.Server.Port, s)
 }
