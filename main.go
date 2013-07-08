@@ -33,6 +33,18 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	val, err := store.Read(md5)
 
+	// check if we have clients that are getting sending ETag information
+	etags := r.Header["If-None-Match"]
+	if len(etags) != 0 {
+		if etags[0] == md5sum(object) {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}		
+	}
+
+	// since we didn't get a hit on the ETag, lets write it out.
+	w.Header().Set("ETag", md5sum(object))
+
 	if err != nil {
 		// fmt.Printf("%s", err)
 		// panic(fmt.Sprintf("key %s had no value", object))
