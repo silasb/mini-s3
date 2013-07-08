@@ -2,7 +2,11 @@
 
 A mini version of the S3 datastore built with Go.
 
-## Build
+## Build for production
+
+	GOOS=linux GOARCH=amd64 GOPATH=`pwd`:$GOPATH go build main.go
+
+## Build for development
 
 	GOPATH=`pwd`:$GOPATH go run main.go
 

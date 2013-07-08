@@ -19,7 +19,7 @@ import (
 var store *diskv.Diskv
 
 func BucketHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
+	fmt.Fprint(w, "chop word, carry water")
 }
 
 func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
