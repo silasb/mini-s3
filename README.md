@@ -2,6 +2,10 @@
 
 A mini version of the S3 datastore built with Go.
 
+## Build
+
+	GOPATH=`pwd`:$GOPATH go run main.go
+
 ## Setup
 
 cp config.sample config

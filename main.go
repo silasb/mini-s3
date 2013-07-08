@@ -4,7 +4,7 @@ import (
 	// "bitbucket.org/taruti/mimemagic"
 	"crypto/md5"
 	"fmt"
-	"github.com/gorilla/mux"
+	"github.com/studygolang/mux"
 	"github.com/peterbourgon/diskv"
 	"io"
 	"io/ioutil"
@@ -12,6 +12,7 @@ import (
 	// "os"
 	"code.google.com/p/gcfg"
 	"strings"
+	"filter"
 )
 
 // holds Diskv database
@@ -23,14 +24,8 @@ func BucketHandler(w http.ResponseWriter, r *http.Request) {
 
 func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	object := vars["object"]
 	bucket := vars["subdomain"]
-
-	if bucket == "" {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "404 No Bucket Provided")
-		return
-	}
+	object := vars["object"]
 
 	path := bucket + "/" + object
 
@@ -42,7 +37,7 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 		// fmt.Printf("%s", err)
 		// panic(fmt.Sprintf("key %s had no value", object))
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "404 Not Found")
+		fmt.Fprint(w, "404 Not Found\n")
 		return
 	}
 
@@ -71,12 +66,6 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	bucket := vars["subdomain"]
 	object := vars["object"]
-
-	if bucket == "" {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "404 No Bucket Provided")
-		return
-	}
 
 	file, handler, err := r.FormFile("file")
 	if err != nil {
@@ -114,12 +103,6 @@ func DeleteObjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	bucket := vars["subdomain"]
 	object := vars["object"]
-
-	if bucket == "" {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "404 No Bucket Provided")
-		return
-	}
 
 	fmt.Fprintf(w, "bucket: %s\n", bucket)
 	fmt.Fprintf(w, "object: %s\n", object)
@@ -196,9 +179,15 @@ func main() {
 		CacheSizeMax: 1024 * 1024,
 	})
 
+	bucketFilter := new(filter.BucketFilter)
+	bucketFilterChain := mux.NewFilterChain(bucketFilter)
+
 	r := mux.NewRouter()
 
 	s := r.Host(`{subdomain}.` + cfg.Server.DomainName).Subrouter()
+	// check if the bucket is included or not.
+	s.FilterChain(bucketFilterChain)
+
 	s.HandleFunc("/", BucketHandler)
 	s.HandleFunc(`/{object:[a-zA-Z_/\.]+}`, GETObjectHandler).Methods("GET")
 	s.HandleFunc(`/{object:[a-zA-Z_/\.]+}`, POSTObjectHandler).Methods("POST")
