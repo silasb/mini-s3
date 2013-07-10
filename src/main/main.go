@@ -13,10 +13,15 @@ import (
 	"code.google.com/p/gcfg"
 	"strings"
 	"filter"
+	"github.com/jmhodges/levigo"
 )
+
+
 
 // holds Diskv database
 var store *diskv.Diskv
+
+var meta_store *levigo.DB
 
 func BucketHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "chop word, carry water")
@@ -53,7 +58,20 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("GET: %s\n", ActualPaths(path))
+	fmt.Printf("GET: %s at %s\n", object, ActualPaths(path))
+
+	ro := levigo.NewReadOptions()
+	data, err := meta_store.Get(ro, []byte(object+"-content-type"))
+	defer ro.Close()
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	content_type := string(data)
+
+	// fmt.Println(string(data))
 
 	// Determine content-type manually
 
@@ -69,7 +87,7 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	// content_type := mimemagic.Match("", b)
 
-	// w.Header().Set("Content-Type", content_type)
+	w.Header().Set("Content-Type", content_type)
 
 	fmt.Fprintf(w, "%s", val)
 }
@@ -100,6 +118,15 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "object: %s\n", object)
 
 	content_type := handler.Header.Get("Content-Type")
+
+	wo := levigo.NewWriteOptions()
+	err = meta_store.Put(wo, []byte(object+"-content-type"), []byte(content_type))
+	defer wo.Close()
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	path := bucket + "/" + object
 	md5 := md5sum(path)
@@ -191,6 +218,18 @@ func main() {
 		CacheSizeMax: 1024 * 1024,
 	})
 
+	opts := levigo.NewOptions()
+	opts.SetCache(levigo.NewLRUCache(3<<30))
+	opts.SetCreateIfMissing(true)
+	meta_store, err = levigo.Open("./meta_store", opts)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// fmt.Println(meta_store)
+
 	bucketFilter := new(filter.BucketFilter)
 	bucketFilterChain := mux.NewFilterChain(bucketFilter)
 
@@ -201,9 +240,9 @@ func main() {
 	s.FilterChain(bucketFilterChain)
 
 	s.HandleFunc("/", BucketHandler)
-	s.HandleFunc(`/{object:[a-zA-Z_/\.]+}`, GETObjectHandler).Methods("GET")
-	s.HandleFunc(`/{object:[a-zA-Z_/\.]+}`, POSTObjectHandler).Methods("POST")
-	s.HandleFunc(`/{object:[a-zA-Z_/\.]+}`, DeleteObjectHandler).Methods("DELETE")
+	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, GETObjectHandler).Methods("GET")
+	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, POSTObjectHandler).Methods("POST")
+	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, DeleteObjectHandler).Methods("DELETE")
 	http.Handle("/", s)
 
 	http.ListenAndServe(cfg.Server.Host+":"+cfg.Server.Port, s)
