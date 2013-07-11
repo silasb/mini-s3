@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"fmt"
+	"path"
 	"github.com/studygolang/mux"
 	"github.com/jmhodges/levigo"
 	// "bitbucket.org/taruti/mimemagic"
@@ -22,11 +23,7 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 	bucket := vars["subdomain"]
 	object := vars["object"]
 
-	path := bucket + "/" + object
-
-	md5 := md5sum(path)
-
-	val, err := store.Read(md5)
+	bucket_path := bucket + "/" + object
 
 	// check if we have clients that are getting sending ETag information
 	etags := r.Header["If-None-Match"]
@@ -40,15 +37,7 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 	// since we didn't get a hit on the ETag, lets write it out.
 	w.Header().Set("ETag", md5sum(object))
 
-	if err != nil {
-		// fmt.Printf("%s", err)
-		// panic(fmt.Sprintf("key %s had no value", object))
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "404 Not Found\n")
-		return
-	}
-
-	fmt.Printf("GET: %s at %s\n", object, ActualPaths(path))
+	fmt.Printf("GET: %s at %s\n", object, ActualPaths(bucket_path))
 
 	ro := levigo.NewReadOptions()
 	defer ro.Close()
@@ -79,7 +68,7 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", content_type)
 
-	fmt.Fprintf(w, "%s", val)
+	http.ServeFile(w, r, path.Join(abs_store_path, ActualPaths(bucket_path)))
 }
 
 // POST /:object

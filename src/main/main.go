@@ -6,10 +6,18 @@ import (
 	"net/http"
 	"code.google.com/p/gcfg"
 	"filter"
+	"bitbucket.org/kardianos/osext"
+	"path"
 )
+
+var current_exe_path string
+var abs_store_path string
 
 func main() {
 	fmt.Println("mini-s3 v0.0.1")
+
+	filename, _ := osext.Executable()
+	current_exe_path = path.Dir(filename)
 
 	var cfg Config
 
@@ -23,6 +31,8 @@ func main() {
 	if err != nil {
 		fmt.Println("Not using config file for settings, using defaults.")
 	}
+
+	abs_store_path = path.Join(current_exe_path, cfg.Server.Store)
 
 	// these two functions initialize global variables in their respective files
 	initStore(cfg)
