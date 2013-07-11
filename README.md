@@ -4,11 +4,15 @@ A mini version of the S3 datastore built with Go.
 
 ## Build for production
 
-	GOOS=linux GOARCH=amd64 GOPATH=`pwd`:$GOPATH go build main.go
+Modify the paths for the levelDB path and then execute:
+
+	GOOS=linux GOARCH=amd64 ./build.sh
 
 ## Build for development
 
-	GOPATH=`pwd`:$GOPATH go run main.go
+Modify the paths for the levelDB path and then execute:
+
+	./build.sh
 
 ## Setup
 
