@@ -51,9 +51,9 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("GET: %s at %s\n", object, ActualPaths(path))
 
 	ro := levigo.NewReadOptions()
-	data, err := meta_store.Get(ro, []byte(object+"-content-type"))
 	defer ro.Close()
 
+	data, err := meta_store.Get(ro, []byte(object+"-content-type"))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -112,9 +112,9 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 	content_type := handler.Header.Get("Content-Type")
 
 	wo := levigo.NewWriteOptions()
-	err = meta_store.Put(wo, []byte(object+"-content-type"), []byte(content_type))
 	defer wo.Close()
 
+	err = meta_store.Put(wo, []byte(object+"-content-type"), []byte(content_type))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -147,4 +147,13 @@ func DeleteObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Erase the key+value from the store (and the disk).
 	store.Erase(md5)
+
+	wo := levigo.NewWriteOptions()
+	defer wo.Close()
+
+	err := meta_store.Delete(wo, []byte(object+"-content-type"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
