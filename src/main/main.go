@@ -8,12 +8,17 @@ import (
 	"filter"
 	"bitbucket.org/kardianos/osext"
 	"path"
+	// uncomment for profile support
+	//"github.com/davecheney/profile"
 )
 
 var current_exe_path string
 var abs_store_path string
 
 func main() {
+	// uncomment for profile support
+	//defer profile.Start(profile.CPUProfile).Stop()
+
 	fmt.Println("mini-s3 v0.0.1")
 
 	filename, _ := osext.Executable()
