@@ -39,9 +39,11 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("GET: %s at %s\n", object, ActualPaths(bucket_path))
 
+	// get any meta information for the object
 	ro := levigo.NewReadOptions()
 	defer ro.Close()
 
+	// only meta information is content-type for now
 	data, err := meta_store.Get(ro, []byte(object+"-content-type"))
 	if err != nil {
 		fmt.Println(err)
@@ -49,22 +51,6 @@ func GETObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content_type := string(data)
-
-	// fmt.Println(string(data))
-
-	// Determine content-type manually
-
-	// b := make([]byte, 1024)
-	// file, err := os.Open("store/" + strings.Join(BlockTransform(md5), "/") +
-	// 	"/" +
-	// 	md5)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// file.Read(b)
-	// defer file.Close()
-
-	// content_type := mimemagic.Match("", b)
 
 	w.Header().Set("Content-Type", content_type)
 
@@ -78,6 +64,7 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 	bucket := vars["subdomain"]
 	object := vars["object"]
 
+	// open the file that got uploaded
 	file, handler, err := r.FormFile("file")
 	if err != nil {
 		fmt.Println(err)
@@ -87,6 +74,8 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	// read the file into the data structure.
+	// TODO: don't read it into memory, but io.Copy it from current location to store path?
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
 		fmt.Println(err)
@@ -95,28 +84,36 @@ func POSTObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "bucket: %s\n", bucket)
-	fmt.Fprintf(w, "object: %s\n", object)
-
+	// get content type from the file that we uploaded
 	content_type := handler.Header.Get("Content-Type")
 
+	// open the meta-store to write the content-type of the file
 	wo := levigo.NewWriteOptions()
 	defer wo.Close()
 
+	// write the content type to the meta-store
 	err = meta_store.Put(wo, []byte(object+"-content-type"), []byte(content_type))
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	path := bucket + "/" + object
-	md5 := md5sum(path)
+	bucket_path := bucket + "/" + object
+	md5 := md5sum(bucket_path)
 
-	fmt.Printf("Uploaded: %s to %s with Content-Type: %s\n", handler.Filename,
-	ActualPaths(path),
-	content_type)
+	fmt.Printf("Uploaded: %s to %s with Content-Type: %s\n",
+		handler.Filename,
+		ActualPaths(bucket_path),
+		content_type,
+	)
 
+	// write data to data-store
 	store.Write(md5, []byte(data))
+
+	// write response to client
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 // DELETE /:object
