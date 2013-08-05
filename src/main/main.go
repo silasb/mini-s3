@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bitbucket.org/kardianos/osext"
+	"code.google.com/p/gcfg"
+	"filter"
 	"fmt"
 	"github.com/studygolang/mux"
 	"net/http"
-	"code.google.com/p/gcfg"
-	"filter"
-	"bitbucket.org/kardianos/osext"
 	"path"
 	// uncomment for profile support
 	//"github.com/davecheney/profile"
@@ -29,7 +29,7 @@ func main() {
 	// setting default settings
 	cfg.Server.Host = "127.0.0.1"
 	cfg.Server.Port = "8080"
-	cfg.Server.DomainName = "s3.dev"
+	cfg.Server.RootDomainName = "s3.dev"
 	cfg.Server.Store = "store"
 
 	err := gcfg.ReadFileInto(&cfg, "config")
@@ -48,7 +48,7 @@ func main() {
 
 	r := mux.NewRouter()
 
-	s := r.Host(`{subdomain}.` + cfg.Server.DomainName).Subrouter()
+	s := r.Host(`{subdomain}.` + cfg.Server.RootDomainName).Subrouter()
 	// check if the bucket is included or not.
 	s.FilterChain(bucketFilterChain)
 
