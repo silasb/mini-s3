@@ -7,4 +7,8 @@ type Config struct {
 		RootDomainName string
 		Store          string
 	}
+	RPC struct {
+		Host		   string
+		Port		   int
+	}
 }

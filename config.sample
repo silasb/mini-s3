@@ -3,3 +3,7 @@ port = 8000
 host = 0.0.0.0
 store = store2
 rootDomainName = "s3.dev"
+
+[rpc]
+host = "identity.api.pyserve.com"
+port = 8001

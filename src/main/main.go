@@ -31,6 +31,8 @@ func main() {
 	cfg.Server.Port = "8080"
 	cfg.Server.RootDomainName = "s3.dev"
 	cfg.Server.Store = "store"
+	cfg.RPC.Host = "identity.api.pyserve.com"
+	cfg.RPC.Port = 8001
 
 	err := gcfg.ReadFileInto(&cfg, "config")
 	if err != nil {
@@ -43,19 +45,20 @@ func main() {
 	initStore(cfg)
 	initMetaStore()
 
+	authFilter := new(filter.AuthFilter)
+	authFilter.RPCServerHost = cfg.RPC.Host
+	authFilter.RPCServerPort = cfg.RPC.Port
 	bucketFilter := new(filter.BucketFilter)
-	bucketFilterChain := mux.NewFilterChain(bucketFilter)
+	filterChange := mux.NewFilterChain([]mux.Filter{authFilter, bucketFilter}...)
 
 	r := mux.NewRouter()
 
 	s := r.Host(`{subdomain}.` + cfg.Server.RootDomainName).Subrouter()
-	// check if the bucket is included or not.
-	s.FilterChain(bucketFilterChain)
 
 	s.HandleFunc("/", BucketHandler)
-	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, GETObjectHandler).Methods("GET")
-	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, POSTObjectHandler).Methods("POST")
-	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, DeleteObjectHandler).Methods("DELETE")
+	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, GETObjectHandler).Methods("GET").AppendFilterChain(filterChange)
+	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, POSTObjectHandler).Methods("POST").AppendFilterChain(filterChange)
+	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, DeleteObjectHandler).Methods("DELETE").AppendFilterChain(filterChange)
 	http.Handle("/", s)
 
 	http.ListenAndServe(cfg.Server.Host+":"+cfg.Server.Port, s)
