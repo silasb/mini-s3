@@ -33,9 +33,13 @@ where /tmp/profiel014884158 is the name of the profile built when starting
 
 ## API support
 
+Get a token
+
+	curl -k https://identity.api.pyserve.com/v1.0/tokens -d '{"username": "silas", "password": "******"}' -H "Content-Type: application/json"
+
 Place a file or information into an object:
 
-	curl -X POST -F file=@wkhtmltopdf testing.mini-s3.dev:8080/testing
+	curl -X POST -F file=@wkhtmltopdf testing.pyserve.com:8000/testing/testing -H "X-Auth-Token: fbf6834f-8535-4042-64f7-a1c61a471959"
 
 Retrieve an object from an bucket:
 
