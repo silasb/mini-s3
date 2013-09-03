@@ -50,13 +50,14 @@ func main() {
 	authFilter.RPCServerPort = cfg.RPC.Port
 	bucketFilter := new(filter.BucketFilter)
 	filterChange := mux.NewFilterChain([]mux.Filter{authFilter, bucketFilter}...)
+	bucketFilterMux := mux.NewFilterChain(bucketFilter)
 
 	r := mux.NewRouter()
 
 	s := r.Host(`{subdomain}.` + cfg.Server.RootDomainName).Subrouter()
 
 	s.HandleFunc("/", BucketHandler)
-	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, GETObjectHandler).Methods("GET").AppendFilterChain(filterChange)
+	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, GETObjectHandler).Methods("GET").AppendFilterChain(bucketFilterMux)
 	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, POSTObjectHandler).Methods("POST").AppendFilterChain(filterChange)
 	s.HandleFunc(`/{object:[a-zA-Z0-9_/\.]+}`, DeleteObjectHandler).Methods("DELETE").AppendFilterChain(filterChange)
 	http.Handle("/", s)
